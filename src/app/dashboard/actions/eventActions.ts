@@ -72,53 +72,27 @@ export async function createEvent(data: EventData) {
 /* -------------------------------------------------------------------------- */
 
 export async function getEvents({ search = "", sport = "" }) {
-  const supabase = createSupabaseServerClient();
+  console.log("🪶 getEvents() called");
 
-  console.log("🔍 DEBUG getEvents:", {
-  url: process.env.NEXT_PUBLIC_SUPABASE_URL,
-  hasKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-});
+  const supabase = createSupabaseServerClient();
+  console.log("✅ Supabase client created");
 
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
+  console.log("👤 Supabase user check:", { user, userError });
 
-  const knownSports = [
-    "Soccer",
-    "Basketball",
-    "Tennis",
-    "Baseball",
-    "Volleyball",
-    "Hockey",
-    "Cricket",
-    "Rugby",
-    "Golf",
-    "Swimming",
-    "Track",
-  ];
-
-  let query = supabase.from("events").select("*").order("date", { ascending: true });
-
-  if (search) query = query.ilike("name", `%${search}%`);
-
-  if (sport) {
-    const normalizedSport = sport.trim().toLowerCase();
-
-    if (normalizedSport === "other") {
-      query = query.not(
-        "sport",
-        "in",
-        `(${knownSports.map((s) => `'${s}'`).join(",")})`
-      );
-    } else {
-      query = query.ilike("sport", normalizedSport);
-    }
+  // Proceed only if user exists
+  if (userError || !user) {
+    console.log("🚫 No user found or auth error");
+    throw new Error("Unauthorized");
   }
 
+  let query = supabase.from("events").select("*").order("date", { ascending: true });
   const { data: events, error } = await query;
 
   console.log("📦 Supabase query result:", { events, error });
-
   if (error) throw new Error(error.message);
 
   return { events, currentUserId: user?.id ?? null };

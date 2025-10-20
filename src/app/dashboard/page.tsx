@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Loader2, LogOut } from "lucide-react";
+import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
@@ -17,21 +18,16 @@ export default function DashboardPage() {
   const [search, setSearch] = useState("");
   const [sport, setSport] = useState("");
   const [isPending, startTransition] = useTransition();
-  const [supabase, setSupabase] = useState<any>(null);
   const router = useRouter();
 
-  // ✅ Create Supabase client only in browser
-  useEffect(() => {
-    const initSupabase = async () => {
-      const { createBrowserClient } = await import("@supabase/ssr");
-      const client = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
-      setSupabase(client);
-    };
-    initSupabase();
-  }, []);
+  // ✅ Only create the Supabase client in the browser
+  const supabase =
+    typeof window !== "undefined"
+      ? createBrowserClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        )
+      : null;
 
   const knownSports = [
     "Soccer",
@@ -69,10 +65,8 @@ export default function DashboardPage() {
     });
   };
 
-  // ✅ Fetch user info only after Supabase client is ready
   useEffect(() => {
     if (!supabase) return;
-
     const fetchUser = async () => {
       const { data, error } = await supabase.auth.getUser();
       if (error || !data?.user) return;
@@ -84,7 +78,6 @@ export default function DashboardPage() {
         "User";
       setUsername(displayName);
     };
-
     fetchUser();
   }, [supabase]);
 
@@ -114,29 +107,16 @@ export default function DashboardPage() {
     }
   };
 
-  // Prevent rendering before Supabase initializes
-  if (!supabase) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="animate-spin w-6 h-6 text-gray-500" />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-6 sm:px-10 md:px-16 space-y-8">
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h1 className="text-2xl font-semibold">Emil&apos;s Events Dashboard</h1>
-
         <div className="flex items-center gap-4">
-          {username && (
-            <span className="text-gray-600 font-medium">Hi, {username}</span>
-          )}
+          {username && <span className="text-gray-600 font-medium">Hi, {username}</span>}
           <Button
             variant="destructive"
             onClick={handleLogout}
-            className="flex items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.03] active:scale-[0.97] hover:bg-red-600"
+            className="flex items-center gap-2"
           >
             <LogOut className="w-4 h-4" />
             Logout
@@ -144,22 +124,19 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Add Event Button */}
       <EventForm onSuccess={fetchEvents} />
 
-      {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <Input
           placeholder="Search events..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="max-w-xs cursor-text"
+          className="max-w-xs"
         />
-
         <select
           value={sport}
           onChange={(e) => setSport(e.target.value)}
-          className="border border-gray-300 rounded-md p-2 cursor-pointer hover:border-blue-400 transition-all duration-200"
+          className="border border-gray-300 rounded-md p-2"
         >
           <option value="">All Sports</option>
           {knownSports.map((s) => (
@@ -170,14 +147,12 @@ export default function DashboardPage() {
         </select>
       </div>
 
-      {/* Loading Spinner */}
       {isPending && (
         <div className="flex items-center justify-center p-10">
           <Loader2 className="animate-spin w-6 h-6 text-gray-500" />
         </div>
       )}
 
-      {/* Events Grid */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 px-2 sm:px-6 md:px-10">
         {events.map((event) => (
           <EventCard
@@ -190,7 +165,6 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Empty State */}
       {events.length === 0 && !isPending && (
         <p className="text-gray-500 text-center pt-10">No events found.</p>
       )}

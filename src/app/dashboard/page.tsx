@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Loader2, LogOut } from "lucide-react";
-import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
@@ -18,12 +17,21 @@ export default function DashboardPage() {
   const [search, setSearch] = useState("");
   const [sport, setSport] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [supabase, setSupabase] = useState<any>(null);
   const router = useRouter();
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  // ✅ Create Supabase client only in browser
+  useEffect(() => {
+    const initSupabase = async () => {
+      const { createBrowserClient } = await import("@supabase/ssr");
+      const client = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      setSupabase(client);
+    };
+    initSupabase();
+  }, []);
 
   const knownSports = [
     "Soccer",
@@ -61,8 +69,10 @@ export default function DashboardPage() {
     });
   };
 
-  // ✅ Fetch user info for display
+  // ✅ Fetch user info only after Supabase client is ready
   useEffect(() => {
+    if (!supabase) return;
+
     const fetchUser = async () => {
       const { data, error } = await supabase.auth.getUser();
       if (error || !data?.user) return;
@@ -74,8 +84,9 @@ export default function DashboardPage() {
         "User";
       setUsername(displayName);
     };
+
     fetchUser();
-  }, []);
+  }, [supabase]);
 
   useEffect(() => {
     fetchEvents();
@@ -94,6 +105,7 @@ export default function DashboardPage() {
   };
 
   const handleLogout = async () => {
+    if (!supabase) return;
     const { error } = await supabase.auth.signOut();
     if (error) toast.error(error.message);
     else {
@@ -101,6 +113,15 @@ export default function DashboardPage() {
       router.push("/");
     }
   };
+
+  // Prevent rendering before Supabase initializes
+  if (!supabase) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="animate-spin w-6 h-6 text-gray-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-6 sm:px-10 md:px-16 space-y-8">

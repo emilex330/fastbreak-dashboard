@@ -4,11 +4,6 @@ import { z } from "zod";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
-console.log("DEBUG ENV VARS:", {
-  url: process.env.NEXT_PUBLIC_SUPABASE_URL,
-  key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "✅ exists" : "❌ missing",
-});
-
 // Helper: Create a type-safe Supabase server client
 // - Uses the Supabase SSR helper to create a client that can read and set
 //   cookies via Next.js server-side cookie helpers.
